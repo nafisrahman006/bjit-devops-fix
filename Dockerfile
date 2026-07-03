@@ -1,12 +1,20 @@
-FROM python:latest
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
-COPY . .
+COPY app/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN apt-get update && apt-get install -y build-essential gcc curl vim \
-    && pip install -r app/requirements.txt
+COPY app/app.py ./app.py
+
+RUN chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 5000
 
-CMD ["python", "app/app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "30", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
